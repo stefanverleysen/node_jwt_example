@@ -1,64 +1,31 @@
 const express = require('express');
-const jwt = require('jsonwebtoken');
+const mongoose = require('mongoose');
+const bodyParser = require('body-parser');
+const cors = require('cors');
+const dotenv = require('dotenv');
+const authRoutes = require('./routes/auth'); // Ensure this path is correct
+
+dotenv.config();
 
 const app = express();
+const PORT = process.env.PORT || 5000;
 
-app.get('/api', (req, res) => {
-  res.json({
-    message: 'Welcome to the API'
-  });
+// Middleware
+app.use(bodyParser.json());
+app.use(cors({ origin: 'http://localhost:3000' })); // Enable CORS for the frontend
+
+// Routes
+app.use('/api/auth', authRoutes);
+
+// Example of a protected route
+app.get('/api/protected', (req, res) => {
+  res.json({ msg: 'This is a protected route' });
 });
 
-app.post('/api/posts', verifyToken, (req, res) => {  
-  jwt.verify(req.token, 'secretkey', (err, authData) => {
-    if(err) {
-      res.sendStatus(403);
-    } else {
-      res.json({
-        message: 'Post created...',
-        authData
-      });
-    }
-  });
-});
-
-app.post('/api/login', (req, res) => {
-  // Mock user
-  const user = {
-    id: 1, 
-    username: 'brad',
-    email: 'brad@gmail.com'
-  }
-
-  jwt.sign({user}, 'secretkey', { expiresIn: '30s' }, (err, token) => {
-    res.json({
-      token
-    });
-  });
-});
-
-// FORMAT OF TOKEN
-// Authorization: Bearer <access_token>
-
-// Verify Token
-function verifyToken(req, res, next) {
-  // Get auth header value
-  const bearerHeader = req.headers['authorization'];
-  // Check if bearer is undefined
-  if(typeof bearerHeader !== 'undefined') {
-    // Split at the space
-    const bearer = bearerHeader.split(' ');
-    // Get token from array
-    const bearerToken = bearer[1];
-    // Set the token
-    req.token = bearerToken;
-    // Next middleware
-    next();
-  } else {
-    // Forbidden
-    res.sendStatus(403);
-  }
-
-}
-
-app.listen(5000, () => console.log('Server started on port 5000'));
+// Connect to MongoDB
+mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+  .then(() => {
+    console.log('Connected to MongoDB');
+    app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+  })
+  .catch(err => console.log(err));
