@@ -1,64 +1,32 @@
 const express = require('express');
-const jwt = require('jsonwebtoken');
+const bodyParser = require('body-parser');
+const dotenv = require('dotenv');
+const mongoose = require('mongoose');
+const cors = require('cors');
 
 const app = express();
+const userRoutes = require('./routes/auth');
+const leaderboardRoutes = require('./routes/leaderboard');
+const rspvRoutes = require('./routes/rsvp');
 
-app.get('/api', (req, res) => {
-  res.json({
-    message: 'Welcome to the API'
-  });
-});
+app.use(express.json())
+app.use(cors()); // Enable CORS for the frontend
+app.options('*', cors());  // enable pre-flight
+app.use(bodyParser.json());
 
-app.post('/api/posts', verifyToken, (req, res) => {  
-  jwt.verify(req.token, 'secretkey', (err, authData) => {
-    if(err) {
-      res.sendStatus(403);
-    } else {
-      res.json({
-        message: 'Post created...',
-        authData
-      });
-    }
-  });
-});
 
-app.post('/api/login', (req, res) => {
-  // Mock user
-  const user = {
-    id: 1, 
-    username: 'brad',
-    email: 'brad@gmail.com'
-  }
+dotenv.config();
 
-  jwt.sign({user}, 'secretkey', { expiresIn: '30s' }, (err, token) => {
-    res.json({
-      token
-    });
-  });
-});
+app.use('/user', userRoutes);
+app.use('/leaderboard', leaderboardRoutes);
+app.use('/rspv', rspvRoutes);
 
-// FORMAT OF TOKEN
-// Authorization: Bearer <access_token>
+// Connect to MongoDB
+mongoose.connect(process.env.MONGO_URI)
+  .then(() => {
+    console.log('Connected to MongoDB');
+  })
+  .catch(err => console.log(err));
 
-// Verify Token
-function verifyToken(req, res, next) {
-  // Get auth header value
-  const bearerHeader = req.headers['authorization'];
-  // Check if bearer is undefined
-  if(typeof bearerHeader !== 'undefined') {
-    // Split at the space
-    const bearer = bearerHeader.split(' ');
-    // Get token from array
-    const bearerToken = bearer[1];
-    // Set the token
-    req.token = bearerToken;
-    // Next middleware
-    next();
-  } else {
-    // Forbidden
-    res.sendStatus(403);
-  }
 
-}
-
-app.listen(5000, () => console.log('Server started on port 5000'));
+app.listen(process.env.PORT, () => console.log(`Server started on port ${process.env.PORT}`));
